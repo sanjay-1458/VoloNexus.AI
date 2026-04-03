@@ -137,10 +137,12 @@ export class AuthController {
     }
 
     const result = await this.authService.refreshToken(refreshToken);
+
+    const isProduction = process.env.NODE_ENV === "production";
     res.cookie("access_token", result.accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
       maxAge: 86400000,
       path: "/",
     });

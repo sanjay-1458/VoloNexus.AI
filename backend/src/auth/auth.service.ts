@@ -110,6 +110,7 @@ export class AuthService {
   async register(dto: RegisterDto) {
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) {
+      console.error(`Registration blocked: ${dto.email} already exists`);
       throw new ConflictException("Email already registered");
     }
 
@@ -157,6 +158,9 @@ export class AuthService {
     });
 
     if (!record) {
+      console.error(
+        `Verification failed for ${dto.email}: Invalid/Expired OTP`,
+      );
       throw new BadRequestException("Invalid or expired verification code");
     }
 
@@ -195,12 +199,14 @@ export class AuthService {
 
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
+      console.error(`Login failed: User not found for email ${dto.email}`);
       await this.recordFailedAttempt(identifier);
       throw new UnauthorizedException("Invalid email or password");
     }
 
     const isValid = await this.verifyPassword(dto.password, user.password_hash);
     if (!isValid) {
+      console.error(`Login failed: Incorrect password for ${dto.email}`);
       await this.recordFailedAttempt(identifier);
       throw new UnauthorizedException("Invalid email or password");
     }
@@ -247,7 +253,8 @@ export class AuthService {
       );
 
       return { accessToken };
-    } catch {
+    } catch (error) {
+      console.error("Refresh token validation error:", error);
       throw new UnauthorizedException("Invalid refresh token");
     }
   }
@@ -255,6 +262,9 @@ export class AuthService {
   async forgotPassword(email: string) {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
+      console.error(
+        `Forgot password requested for non-existent email: ${email}`,
+      );
       return { message: "If the email exists, a reset link has been sent" };
     }
 
@@ -296,7 +306,29 @@ export class AuthService {
     });
 
     if (!resetToken) {
+      console.error(`Reset password failed: Token invalid or expired`);
       throw new BadRequestException("Invalid or expired reset token");
+    }
+
+    const user = await this.usersService.findById(resetToken.user_id);
+    if (!user) {
+      console.error(
+        `Reset password failed: User ${resetToken.user_id} not found`,
+      );
+      throw new BadRequestException("User not found");
+    }
+
+    const isSamePassword = await this.verifyPassword(
+      newPassword,
+      user.password_hash,
+    );
+    if (isSamePassword) {
+      console.error(
+        `Reset password failed: New password matches old password for ${user.email}`,
+      );
+      throw new BadRequestException(
+        "New password cannot be the same as the old password",
+      );
     }
 
     const passwordHash = await this.hashPassword(newPassword);
@@ -307,6 +339,9 @@ export class AuthService {
     resetToken.used = true;
     await resetToken.save();
 
+    console.log(
+      `Password successfully reset for user ID: ${resetToken.user_id}`,
+    );
     return { message: "Password reset successfully" };
   }
 
