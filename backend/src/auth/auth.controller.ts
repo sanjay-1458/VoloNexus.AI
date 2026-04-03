@@ -170,14 +170,14 @@ export class AuthController {
     res.cookie("access_token", accessToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: "lax",
+      sameSite: isProduction ? "none" : "lax",
       maxAge: 86400000,
       path: "/",
     });
     res.cookie("refresh_token", refreshToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: "lax",
+      sameSite: isProduction ? "none" : "lax",
       maxAge: 86400000,
       path: "/",
     });
