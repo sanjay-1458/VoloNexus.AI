@@ -99,14 +99,26 @@ export class AiService {
       const activeTimezone =
         user?.preferences?.timezone || timezone || "Asia/Kolkata";
 
-      const userLocalDate = new Intl.DateTimeFormat("en-GB", {
-        dateStyle: "full",
+      const timeFormatter = new Intl.DateTimeFormat("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
         timeZone: activeTimezone,
-      }).format(now);
-      const userLocalTime = new Intl.DateTimeFormat("en-GB", {
-        timeStyle: "short",
+      });
+
+      const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
         timeZone: activeTimezone,
-      }).format(now);
+      });
+
+      const userLocalDate = dateFormatter
+        .format(now)
+        .split("/")
+        .reverse()
+        .join("-");
+      const userLocalTime = timeFormatter.format(now);
 
       const activeHistory =
         history.length > 0 ? history : await this.getStoredHistory(userId);
@@ -129,46 +141,66 @@ export class AiService {
       const thirtyDaysFromNow = new Date(now);
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-      const events = await this.eventsService.findByUser(userId, {
+      const eventsRaw = await this.eventsService.findByUser(userId, {
         start_date: new Date(now.setHours(0, 0, 0, 0)).toISOString(),
         end_date: thirtyDaysFromNow.toISOString(),
       });
 
-      console.log(`[AI CHAT] Context Events Count: ${events.length}`);
+      const eventsForAi = eventsRaw.map((e) => {
+        return {
+          id: e._id,
+          title: e.title,
+          local_date: dateFormatter
+            .format(e.start_time)
+            .split("/")
+            .reverse()
+            .join("-"),
+          local_time: timeFormatter.format(e.start_time),
+          priority_label:
+            e.severity_score >= 76
+              ? "High"
+              : e.severity_score >= 41
+                ? "Medium"
+                : "Low",
+          score: e.severity_score,
+          raw_utc_start: e.start_time.toISOString(),
+        };
+      });
+
+      console.log(
+        `[AI CHAT] Localized Events for context: ${eventsForAi.length}`,
+      );
 
       const analysisPrompt = `
-        You are the VoloNexus.AI Orchestrator. Your tone is professional, efficient, and slightly futuristic.
+        You are the VoloNexus.AI Orchestrator. Tone: Professional, Precise, Agentic.
 
-        1. MULTI-TASKING & CONVERSATION LOOP
-        - If the user asks for MULTIPLE things, generate a separate action object for EACH request.
-        - If the user asks a general question about their schedule, use the "answer" action.
+        1. MULTI-TASKING
+        - Generate an action object for EACH user request.
 
-        2. TIME RULES (CRITICAL)
-        - User's Timezone: ${activeTimezone}
-        - User's Local Date: ${userLocalDate}
-        - User's Local Time: ${userLocalTime}
-        - System UTC Time: ${now.toISOString()}
-        - Use the User's Local Date to calculate relative days.
-        - STRICT FILTERING: If the user asks for a specific date or time range (e.g., "after 12pm"), you MUST filter the events yourself. Do not mention events outside that range in your answer.
+        2. TIME RULES (DETERMINISTIC)
+        - User Timezone: ${activeTimezone}
+        - Current Local Date: ${userLocalDate}
+        - Current Local Time: ${userLocalTime}
+        
+        STRICT FILTERING:
+        - Use the "local_time" and "local_date" fields in the CURRENT EVENTS list below.
+        - If a user asks for "after 12pm", compare that string against "local_time". 
+        - IGNORE and EXCLUDE any event that does not match the user's specific time/date filter.
 
-        3. FORMATTING (CRITICAL)
-        - When using "answer" to list events, YOU MUST USE A MARKDOWN TABLE.
-        - ALWAYS add two empty lines before and after a table.
-        - Table Columns: Date | Time | Title | Priority.
+        3. FORMATTING
+        - For "answer" type, YOU MUST USE A MARKDOWN TABLE.
+        - Blank line before and after tables.
+        - Columns: Date | Time | Title | Priority.
 
-        4. MODIFYING EVENTS & MEMORY
-        - USE EXACT 'id' FROM CURRENT EVENTS for "target_id".
-        - INHERITance: For rescheduling, use details from the CURRENT EVENTS list. Do not ask user for details we already have.
+        4. MODIFICATION
+        - Use EXACT 'id' for "target_id".
+        - Rescheduling inherits details from CURRENT EVENTS.
 
-        5. PRIORITY ENGINE
-        - severity_score: 1-100.
-        - is_reschedulable: FALSE for "gym", "walking", "tea_time".
-
-        CURRENT EVENTS (UTC): ${JSON.stringify(events.map((e) => ({ id: e._id, title: e.title, start: e.start_time, end: e.end_time, source: e.source, score: e.severity_score })))}
-        RECENT CHAT HISTORY (Redis): ${JSON.stringify(activeHistory.slice(-6))}
+        CURRENT EVENTS (LOCALIZED TO ${activeTimezone}): ${JSON.stringify(eventsForAi)}
+        RECENT HISTORY: ${JSON.stringify(activeHistory.slice(-6))}
         USER MESSAGE: "${message}"
 
-        Analyze and return ONLY structured JSON. Return an array of "actions":
+        Return ONLY structured JSON:
         {
           "actions": [
             {
@@ -183,8 +215,7 @@ export class AiService {
                 "severity": "low | medium | high | critical",
                 "is_reschedulable": boolean,
                 "type": "string"
-              },
-              "fuzzy_target": "string"
+              }
             }
           ]
         }
@@ -214,95 +245,63 @@ export class AiService {
           answer: 3,
           ask_user: 4,
         };
-        if (a.type !== b.type)
-          return (order[a.type] || 99) - (order[b.type] || 99);
-        return 0;
+        return (order[a.type] || 99) - (order[b.type] || 99);
       });
 
       for (const act of actions) {
         const actionType = act.type || act.action;
-        console.log(`[PROCESSING ACTION]: ${actionType}`);
+        console.log(`[EXECUTING]: ${actionType}`);
 
         try {
           if (actionType === "answer" && act.answer_text) {
-            const updatedEvents = await this.eventsService.findByUser(userId, {
-              start_date: new Date(now.setHours(0, 0, 0, 0)).toISOString(),
-              end_date: thirtyDaysFromNow.toISOString(),
-            });
-
             const answerPrompt = `
-              You are responding to: "${message}".
-              User local time: ${userLocalTime}. 
+              User Query: "${message}"
+              Current Local Time: ${userLocalTime}
               
-              Task: Create a table of events based ONLY on what the user asked for.
-              If the user asked for "after 12pm", only include events with start_time >= 12:00 PM.
-              If no events match the specific time filter, state "No events found for that specific timeframe."
+              Task: Create a table of events.
+              FILTERING RULE: If the query was "after 12pm", ONLY include events where local_time is 12:00 PM or later. 
+              If the query was for a specific date, ONLY include that date.
+              If no events match, say "No events found for that specific timeframe."
 
               FORMATTING:
-              - Use a Markdown table with columns: Date | Time | Title | Priority.
-              - Priority is: High (76+), Medium (41-75), Low (0-40).
-              - IMPORTANT: Add a double newline \n\n before and after the table.
-
-              Events: ${JSON.stringify(updatedEvents.map((e) => ({ title: e.title, start: e.start_time, score: e.severity_score })))}
+              - Use Markdown Table: Date | Time | Title | Priority.
+              - Double newline before/after.
+              
+              Localized Events Context: ${JSON.stringify(eventsForAi)}
             `;
             const { text: generatedTable } =
               await this.generateWithFallback(answerPrompt);
             answerTexts.push(generatedTable);
           } else if (actionType === "ask_user") {
             needsOnboarding = true;
-          } else if (
-            actionType === "cancel" &&
-            (act.target_id || act.fuzzy_target)
-          ) {
-            let target: any = null;
-            if (act.target_id)
-              target = await this.eventsService.findById(act.target_id, userId);
-            if (!target && act.fuzzy_target)
-              target = await this.eventsService.fuzzyFindEvent(
-                userId,
-                act.fuzzy_target,
-              );
-
+          } else if (actionType === "cancel" && act.target_id) {
+            const target = await this.eventsService.findById(
+              act.target_id,
+              userId,
+            );
             if (target) {
               await this.eventsService.cancel(target._id.toString(), userId);
               actionTaken = true;
               actionResults.push(`✅ Canceled: **${target.title}**`);
-            } else {
-              actionResults.push(
-                `❌ Could not find event to cancel: "${act.target_id || act.fuzzy_target}"`,
-              );
             }
-          } else if (
-            actionType === "reschedule" &&
-            (act.target_id || act.fuzzy_target)
-          ) {
-            let target: any = null;
-            if (act.target_id)
-              target = await this.eventsService.findById(act.target_id, userId);
-            if (!target && act.fuzzy_target)
-              target = await this.eventsService.fuzzyFindEvent(
-                userId,
-                act.fuzzy_target,
-              );
-
+          } else if (actionType === "reschedule" && act.target_id) {
+            const target = await this.eventsService.findById(
+              act.target_id,
+              userId,
+            );
             if (target) {
               const updatePayload: any = { ...act.event };
-
               if (act.event.start_time) {
                 const start = new Date(act.event.start_time);
                 const dur =
                   act.event.duration ||
                   (target.end_time.getTime() - target.start_time.getTime()) /
                     60000;
-                const end = new Date(start.getTime() + dur * 60000);
                 updatePayload.start_time = start.toISOString();
-                updatePayload.end_time = end.toISOString();
+                updatePayload.end_time = new Date(
+                  start.getTime() + dur * 60000,
+                ).toISOString();
               }
-
-              if (target.source === "calendar_sync") {
-                updatePayload.source = "assistant";
-              }
-
               await this.eventsService.update(
                 target._id.toString(),
                 userId,
@@ -310,63 +309,44 @@ export class AiService {
               );
               actionTaken = true;
               actionResults.push(`📅 Rescheduled: **${target.title}**`);
-            } else {
-              actionResults.push(
-                `❌ Could not find event to reschedule: "${act.target_id || act.fuzzy_target}"`,
-              );
             }
-          } else if (
-            actionType === "create" &&
-            act.event?.title &&
-            act.event?.start_time
-          ) {
+          } else if (actionType === "create" && act.event?.title) {
             await this.eventsService.create(userId, act.event, activeTimezone);
             actionTaken = true;
             actionResults.push(`✨ Scheduled: **${act.event.title}**`);
           }
         } catch (error: any) {
-          console.error(`[ACTION EXECUTION ERROR]: ${error.message}`);
           if (error.response?.message === "CONFLICT_DETECTED") {
             const conflictingEvent = error.response.conflictingEvent;
-            const reason = error.response.reason || "Scheduling overlap";
-            const alternatives = error.response.suggestedSlots || [];
-
             const resolutionPrompt = `
-              A conflict occurred: "${conflictingEvent.title}" at ${conflictingEvent.start_time}.
-              Reason: ${reason}
-              Alternatives: ${JSON.stringify(alternatives)}
-              
-              Write a short warning in ${activeTimezone}. List alternatives clearly and ask for instructions.
+              Conflict: "${conflictingEvent.title}" at ${conflictingEvent.start}.
+              Write a short, professional warning in ${activeTimezone} and suggest alternatives.
             `;
-            const { text: resolutionText } =
+            const { text: resText } =
               await this.generateWithFallback(resolutionPrompt);
-            conflictTexts.push(resolutionText);
+            conflictTexts.push(resText);
           } else {
-            actionResults.push(`❌ System Error: ${error.message}`);
+            actionResults.push(`❌ Error: ${error.message}`);
           }
         }
       }
 
       let finalCombinedResponse = "";
-
-      if (answerTexts.length > 0) {
+      if (answerTexts.length > 0)
         finalCombinedResponse += answerTexts.join("\n\n") + "\n\n";
-      }
-      if (actionResults.length > 0) {
+      if (actionResults.length > 0)
         finalCombinedResponse +=
           "### Update Status\n" +
           actionResults.map((r) => `- ${r}`).join("\n") +
           "\n\n";
-      }
-      if (conflictTexts.length > 0) {
+      if (conflictTexts.length > 0)
         finalCombinedResponse +=
           "### ⚠️ Attention Required\n" + conflictTexts.join("\n\n") + "\n\n";
-      }
 
       if (!finalCombinedResponse.trim()) {
         finalCombinedResponse = needsOnboarding
-          ? "I'm ready. Please provide the meeting title and time so I can orchestrate your schedule."
-          : "Understood. I have updated your timeline accordingly.";
+          ? "Please provide details for the event."
+          : "Task completed.";
       }
 
       const updatedHistory = [
@@ -397,9 +377,8 @@ export class AiService {
         refreshNeeded: actionTaken,
       };
     } catch (error: any) {
-      console.error("[CRITICAL ASSISTANT ERROR]", error);
       this.logger.error(`Assistant Error: ${error.message}`);
-      throw new InternalServerErrorException("Assistant Recalibrating.");
+      throw new InternalServerErrorException("Assistant Offline.");
     }
   }
 
@@ -415,7 +394,6 @@ export class AiService {
         this.eventsService.findById(eventId, userId),
         this.eventsService.findById(conflictingEventId, userId),
       ]);
-
       if (!e1 || !e2)
         return { suggested_slots: [], reasoning: "Events not found." };
       const slots = await this.eventsService.findFreeSlots(
@@ -425,49 +403,36 @@ export class AiService {
         tz,
         eventId,
       );
-
-      const prompt = `
-        CONFLICT (${tz}):
-        Event 1: "${e1.title}" | Event 2: "${e2.title}"
-        Available Slots (UTC): ${JSON.stringify(slots)}
-
-        Return JSON:
-        {
-          "suggested_slots": [{"start": "UTC_ISO", "end": "UTC_ISO"}],
-          "event_to_move_id": "string",
-          "reasoning": "string"
-        }
-      `;
-
-      const { text } = await this.generateWithFallback(prompt);
-      const resolution = this.extractJson(text);
-
+      const { text } = await this.generateWithFallback(
+        `Conflict between ${e1.title} and ${e2.title}. Suggest from: ${JSON.stringify(slots)}. Return JSON.`,
+      );
+      const res = this.extractJson(text);
       return {
-        suggested_slots: resolution.suggested_slots || slots,
-        event_to_move_id: resolution.event_to_move_id,
-        reasoning: resolution.reasoning,
+        suggested_slots: res.suggested_slots || slots,
+        event_to_move_id: res.event_to_move_id,
+        reasoning: res.reasoning,
       };
     } catch (e) {
-      return { suggested_slots: [], reasoning: "Resolution failed." };
+      return { suggested_slots: [], reasoning: "Failed." };
     }
   }
 
   async analyzeBugReport(description: string, severity: string = "medium") {
     try {
       const { text } = await this.generateWithFallback(
-        `Analyze bug: ${description} (Severity: ${severity}). Return JSON with "summary" and "impact_analysis".`,
+        `Analyze bug: ${description}. Return JSON with "summary" and "impact_analysis".`,
       );
       const res = this.extractJson(text);
       return {
         is_relevant: true,
         summary: res.summary || description,
-        impact_analysis: res.impact_analysis || "Standard impact.",
+        impact_analysis: res.impact_analysis || "Standard.",
       };
     } catch (e) {
       return {
         is_relevant: true,
         summary: description,
-        impact_analysis: "Manual review required.",
+        impact_analysis: "Review needed.",
       };
     }
   }
@@ -487,7 +452,10 @@ export class AiService {
   }
 
   private async generateWithFallback(prompt: string | any[], config: any = {}) {
-    const models = ["models/gemini-flash-latest", "models/gemini-2.5-flash"];
+    const models = [
+      "models/gemini-flash-latest",
+      "models/gemini-2.0-flash-exp",
+    ];
     let lastError: any = null;
     for (const modelName of models) {
       try {
@@ -502,7 +470,7 @@ export class AiService {
         continue;
       }
     }
-    throw lastError || new Error("AI models failed.");
+    throw lastError || new Error("AI failed.");
   }
 
   private cleanJson(text: string) {
@@ -516,49 +484,15 @@ export class AiService {
     try {
       const now = new Date();
       let activeTimezone = "Asia/Kolkata";
-
       if (userId) {
         const user = await this.usersService.findById(userId);
-        if (user?.preferences?.timezone) {
+        if (user?.preferences?.timezone)
           activeTimezone = user.preferences.timezone;
-        }
       }
-
-      const userLocalDate = new Intl.DateTimeFormat("en-GB", {
-        dateStyle: "full",
-        timeZone: activeTimezone,
-      }).format(now);
-      const userLocalTime = new Intl.DateTimeFormat("en-GB", {
-        timeStyle: "short",
-        timeZone: activeTimezone,
-      }).format(now);
-
-      const prompt = `
-        Analyze incoming emails for scheduling intent.
-        
-        CRITICAL TEMPORAL CONTEXT:
-        - User's Timezone: ${activeTimezone}
-        - User's Current Local Date: ${userLocalDate}
-        - User's Current Local Time: ${userLocalTime}
-
-        Return a JSON array where each object is:
-        - id: string
-        - is_event: boolean
-        - is_scam: boolean
-        - title: string
-        - start_time: UTC ISO string (calculated from local)
-        - duration_minutes: number
-        - severity_score: 1-100
-        - type: string
-        - is_reschedulable: boolean
-        - reasoning: string
-
-        Emails: ${JSON.stringify(emails)}
-      `;
+      const prompt = `Analyze emails for scheduling. Timezone: ${activeTimezone}. Current Local Date/Time: ${now.toLocaleString("en-GB", { timeZone: activeTimezone })}. Return JSON array.`;
       const { text } = await this.generateWithFallback(prompt);
       return JSON.parse(this.cleanJson(text));
     } catch (e: any) {
-      this.logger.error("Failed to parse bulk emails: " + e.message);
       return [];
     }
   }

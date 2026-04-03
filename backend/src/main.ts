@@ -58,7 +58,11 @@ async function bootstrap() {
   SwaggerModule.setup("api/docs", app, document);
 
   const port = process.env.PORT || 8001;
-  await app.listen(port);
+  const server = await app.listen(port);
+
+  server.keepAliveTimeout = 120000;
+  server.headersTimeout = 125000;
+
   console.log(`MeetFlow API running on http://localhost:${port}`);
   console.log(`Swagger docs at http://localhost:${port}/api/docs`);
 }
