@@ -128,7 +128,7 @@ export default function AssistantPage() {
             {
               role: "assistant",
               content:
-                "Hello! I am your scheduling assistant. How can I help you today?",
+                "Welcome back. I have successfully established a neural link with your primary calendar accounts. How shall we orchestrate your schedule today?",
             },
           ]);
         }
@@ -216,7 +216,7 @@ export default function AssistantPage() {
         ...prev,
         {
           role: "error",
-          content: "Connection lost. Please check your network and retry.",
+          content: "Neural link interrupted. Please verify your connection to the swarm and retry.",
         },
       ]);
     } finally {
@@ -228,7 +228,7 @@ export default function AssistantPage() {
     setMessages([
       {
         role: "assistant",
-        content: "Chat history cleared. How can I help you today?",
+        content: "Neural buffers cleared. Standing by for fresh instructions.",
       },
     ]);
 
@@ -281,7 +281,7 @@ export default function AssistantPage() {
               </h2>
               <p className="text-[10px] text-mf-text-secondary uppercase font-bold tracking-widest flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                Live Sync Enabled
+                Active Node: Swarm-01
               </p>
             </div>
           </div>
@@ -289,7 +289,7 @@ export default function AssistantPage() {
             onClick={handleClearChat}
             className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-red-500/10 hover:text-red-400 text-mf-text-secondary text-xs font-bold rounded-xl transition-all border border-transparent hover:border-red-500/20"
           >
-            <Eraser size={14} /> Clear
+            <Eraser size={14} /> Clear Cache
           </button>
         </div>
 
@@ -320,7 +320,7 @@ export default function AssistantPage() {
                     remarkPlugins={[remarkGfm]}
                     components={{
                       table: ({ node, ...props }) => (
-                        <div className="overflow-x-auto my-4 rounded-xl border border-mf-border">
+                        <div className="overflow-x-auto my-6 rounded-xl border border-mf-border">
                           <table
                             className="w-full text-sm text-left border-collapse bg-mf-bg/30"
                             {...props}
@@ -362,7 +362,7 @@ export default function AssistantPage() {
                       ),
                       p: ({ node, ...props }) => (
                         <p
-                          className="mb-4 last:mb-0 text-white/90"
+                          className="mb-4 last:mb-0 text-white/90 whitespace-pre-wrap"
                           {...props}
                         />
                       ),
@@ -394,7 +394,7 @@ export default function AssistantPage() {
                     onClick={handleResend}
                     className="mt-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-red-400 hover:text-red-300 transition-colors"
                   >
-                    <RefreshCw className="w-3 h-3" /> Retry Last Request
+                    <RefreshCw className="w-3 h-3" /> Reboot Swarm Sync
                   </button>
                 )}
               </div>
@@ -404,14 +404,14 @@ export default function AssistantPage() {
           {isInitialLoading && (
             <div className="flex gap-3 items-center text-[10px] font-bold uppercase tracking-widest text-mf-text-secondary opacity-50">
               <BrainCircuit className="w-4 h-4 text-mf-accent animate-pulse" />
-              Recalibrating Context...
+              Establishing Neural Context...
             </div>
           )}
 
           {loading && (
             <div className="flex gap-3 items-center text-sm text-mf-text-secondary">
               <BrainCircuit className="w-5 h-5 text-mf-accent animate-spin-slow" />
-              Analyzing Schedule...
+              Scanning Timeline for Overlaps...
             </div>
           )}
         </div>
@@ -426,8 +426,8 @@ export default function AssistantPage() {
               disabled={loading || cooldown > 0}
               placeholder={
                 cooldown > 0
-                  ? `One minute buffer so that ai can handle request (${cooldown}s)`
-                  : "Type your command..."
+                  ? `Neural cooldown active... ready in ${cooldown}s`
+                  : "Issue a command to your swarm..."
               }
               className="w-full pl-5 pr-16 py-4 bg-mf-card border border-mf-border rounded-2xl text-sm text-white outline-none focus:border-mf-accent focus:ring-1 focus:ring-mf-accent/30 transition-all placeholder:text-mf-text-secondary/50"
             />
@@ -444,7 +444,7 @@ export default function AssistantPage() {
             </button>
           </div>
           <div className="mt-3 -mb-3 text-center text-[10px] text-mf-text-secondary opacity-50">
-            To prevent overload, please wait 60 seconds between messages.
+            Automated guardrails active. Buffer between requests: 60s.
           </div>
         </div>
       </div>
@@ -455,7 +455,7 @@ export default function AssistantPage() {
             <div className="flex items-center gap-2">
               <CalendarIcon className="w-4 h-4 text-mf-accent" />
               <h3 className="text-sm font-bold text-white uppercase tracking-tight">
-                Timeline
+                Neural Timeline
               </h3>
             </div>
             <div className="flex items-center bg-mf-bg/50 rounded-xl p-1 border border-mf-border">
@@ -477,7 +477,7 @@ export default function AssistantPage() {
 
           <div className="mb-6 px-1">
             <p className="text-[10px] text-mf-text-secondary uppercase font-black tracking-widest mb-1 opacity-70">
-              Active Window
+              Active Sync Range
             </p>
             <p className="text-sm text-white font-mono flex items-center gap-2">
               {weekDates.length > 0 && (
@@ -535,7 +535,7 @@ export default function AssistantPage() {
                   month: "short",
                   day: "numeric",
                 })}{" "}
-                Agenda
+                Registry
               </h3>
             </div>
             <div className="text-[10px] font-bold text-mf-text-secondary bg-mf-bg px-2.5 py-1 rounded-full border border-mf-border">
@@ -576,7 +576,7 @@ export default function AssistantPage() {
                 <div className="w-16 h-16 rounded-full bg-mf-bg/50 flex items-center justify-center mb-4 border border-mf-border/50">
                   <CalendarIcon className="w-8 h-8 opacity-20" />
                 </div>
-                <p className="text-sm font-medium">Agenda Clear</p>
+                <p className="text-sm font-medium">Registry Idle</p>
               </div>
             )}
           </div>
@@ -662,7 +662,7 @@ export default function AssistantPage() {
                 {showDetails.description && (
                   <div className="p-4 bg-mf-bg rounded-2xl border border-mf-border">
                     <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider text-white/50">
-                      <AlignLeft className="w-3.5 h-3.5" /> Description
+                      <AlignLeft className="w-3.5 h-3.5" /> Registry Notes
                     </div>
                     <p className="text-white/80 leading-relaxed whitespace-pre-wrap">
                       {showDetails.description}
@@ -675,7 +675,7 @@ export default function AssistantPage() {
                 onClick={() => setShowDetails(null)}
                 className="w-full mt-8 py-3.5 bg-white/5 hover:bg-white/10 border border-white/5 text-white font-bold rounded-xl transition-all"
               >
-                Close Details
+                Close Data View
               </button>
             </motion.div>
           </div>

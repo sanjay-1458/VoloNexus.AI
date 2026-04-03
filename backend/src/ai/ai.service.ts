@@ -71,8 +71,11 @@ export class AiService {
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) return {};
-      return JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0]);
+      console.log("[AI JSON EXTRACTION SUCCESS]", parsed);
+      return parsed;
     } catch (e: any) {
+      console.error("[AI JSON EXTRACTION FAILED]", text);
       this.logger.error("JSON Extraction failed. Raw: " + text);
       return {};
     }
@@ -131,36 +134,36 @@ export class AiService {
         end_date: thirtyDaysFromNow.toISOString(),
       });
 
+      console.log(`[AI CHAT] Context Events Count: ${events.length}`);
+
       const analysisPrompt = `
-        You are an intelligent scheduling assistant with strict reasoning and memory awareness.
+        You are the VoloNexus.AI Orchestrator. Your tone is professional, efficient, and slightly futuristic.
 
         1. MULTI-TASKING & CONVERSATION LOOP
         - If the user asks for MULTIPLE things, generate a separate action object for EACH request.
-        - If the user asks a general question about their schedule, use the "answer" action and write a natural response.
+        - If the user asks a general question about their schedule, use the "answer" action.
 
         2. TIME RULES (CRITICAL)
         - User's Timezone: ${activeTimezone}
         - User's Local Date: ${userLocalDate}
         - User's Local Time: ${userLocalTime}
         - System UTC Time: ${now.toISOString()}
-        - Use the User's Local Date to calculate relative days (e.g. "next Tuesday").
-        - NEVER suggest a time in the past or less than 10 mins from now.
+        - Use the User's Local Date to calculate relative days.
+        - STRICT FILTERING: If the user asks for a specific date or time range (e.g., "after 12pm"), you MUST filter the events yourself. Do not mention events outside that range in your answer.
 
         3. FORMATTING (CRITICAL)
-        - When using the "answer" action to list events, YOU MUST FORMAT THE EVENTS AS A CLEAN MARKDOWN TABLE (Columns: Date, Time, Title, Priority).
-        - DO NOT output messy raw text lists.
+        - When using "answer" to list events, YOU MUST USE A MARKDOWN TABLE.
+        - ALWAYS add two empty lines before and after a table.
+        - Table Columns: Date | Time | Title | Priority.
 
-        4. MODIFYING EVENTS & MEMORY (EXACT ID MATCHING & INHERITANCE)
-        - To reschedule or cancel an event, YOU MUST USE THE EXACT 'id' FROM THE CURRENT EVENTS LIST below in the "target_id" field. Do NOT use fuzzy guessing if you have the ID.
-        - INHERITANCE: If rescheduling an existing event, YOU MUST INHERIT its duration, severity, and other details from the CURRENT EVENTS list. DO NOT trigger "ask_user" for missing details if you are modifying an existing event! Only use "ask_user" for completely new events with missing info.
-        - If user already provided details in previous turns, retain them from history.
+        4. MODIFYING EVENTS & MEMORY
+        - USE EXACT 'id' FROM CURRENT EVENTS for "target_id".
+        - INHERITance: For rescheduling, use details from the CURRENT EVENTS list. Do not ask user for details we already have.
 
-        5. INPUT EXTRACTION & PRIORITY ENGINE
-        Extract: title, start_time (UTC ISO), duration (mins), description, location, type.
-        - Assign "severity_score" (1 to 100).
-        - Assign "is_reschedulable" boolean. MUST BE FALSE for "gym", "walking", "tea_time". True for others.
-        
-        LONG-TERM USER PREFERENCES (From Pinecone): ${pineconeMemory || "None found."}
+        5. PRIORITY ENGINE
+        - severity_score: 1-100.
+        - is_reschedulable: FALSE for "gym", "walking", "tea_time".
+
         CURRENT EVENTS (UTC): ${JSON.stringify(events.map((e) => ({ id: e._id, title: e.title, start: e.start_time, end: e.end_time, source: e.source, score: e.severity_score })))}
         RECENT CHAT HISTORY (Redis): ${JSON.stringify(activeHistory.slice(-6))}
         USER MESSAGE: "${message}"
@@ -170,18 +173,18 @@ export class AiService {
           "actions": [
             {
               "type": "create" | "reschedule" | "ask_user" | "cancel" | "answer",
-              "answer_text": "string (MUST use Markdown tables for schedules)",
-              "target_id": "string (the exact ID of the event to modify from the CURRENT EVENTS list)",
+              "answer_text": "string",
+              "target_id": "string",
               "event": { 
                 "title": "string", 
                 "start_time": "UTC_ISO_STRING", 
-                "duration": "number (optional if rescheduling)",
-                "severity_score": "number (optional if rescheduling)",
+                "duration": "number",
+                "severity_score": "number",
                 "severity": "low | medium | high | critical",
                 "is_reschedulable": boolean,
                 "type": "string"
               },
-              "fuzzy_target": "string (only if exact ID is unknown)"
+              "fuzzy_target": "string"
             }
           ]
         }
@@ -213,21 +216,12 @@ export class AiService {
         };
         if (a.type !== b.type)
           return (order[a.type] || 99) - (order[b.type] || 99);
-
-        if (a.type === "reschedule" && b.type === "reschedule") {
-          const timeA = a.event?.start_time
-            ? new Date(a.event.start_time).getTime()
-            : 0;
-          const timeB = b.event?.start_time
-            ? new Date(b.event.start_time).getTime()
-            : 0;
-          return timeB - timeA;
-        }
         return 0;
       });
 
       for (const act of actions) {
         const actionType = act.type || act.action;
+        console.log(`[PROCESSING ACTION]: ${actionType}`);
 
         try {
           if (actionType === "answer" && act.answer_text) {
@@ -237,9 +231,18 @@ export class AiService {
             });
 
             const answerPrompt = `
-              Generate a clean, strictly formatted MARKDOWN TABLE of the following events.
-              Columns MUST BE: Date | Time | Title | Priority.
-              Format the date and time using ${activeTimezone}.
+              You are responding to: "${message}".
+              User local time: ${userLocalTime}. 
+              
+              Task: Create a table of events based ONLY on what the user asked for.
+              If the user asked for "after 12pm", only include events with start_time >= 12:00 PM.
+              If no events match the specific time filter, state "No events found for that specific timeframe."
+
+              FORMATTING:
+              - Use a Markdown table with columns: Date | Time | Title | Priority.
+              - Priority is: High (76+), Medium (41-75), Low (0-40).
+              - IMPORTANT: Add a double newline \n\n before and after the table.
+
               Events: ${JSON.stringify(updatedEvents.map((e) => ({ title: e.title, start: e.start_time, score: e.severity_score })))}
             `;
             const { text: generatedTable } =
@@ -322,19 +325,18 @@ export class AiService {
             actionResults.push(`✨ Scheduled: **${act.event.title}**`);
           }
         } catch (error: any) {
+          console.error(`[ACTION EXECUTION ERROR]: ${error.message}`);
           if (error.response?.message === "CONFLICT_DETECTED") {
             const conflictingEvent = error.response.conflictingEvent;
             const reason = error.response.reason || "Scheduling overlap";
             const alternatives = error.response.suggestedSlots || [];
 
             const resolutionPrompt = `
-              A conflict occurred while executing a user action.
-              CONFLICT WITH: "${conflictingEvent.title}" at ${conflictingEvent.start_time}.
-              REASON: ${reason}
-              Alternative available slots in UTC: ${JSON.stringify(alternatives)}
+              A conflict occurred: "${conflictingEvent.title}" at ${conflictingEvent.start_time}.
+              Reason: ${reason}
+              Alternatives: ${JSON.stringify(alternatives)}
               
-              Write a short, natural warning message to the user in their local time (${activeTimezone}).
-              State the conflict, present the alternative slots cleanly, and ask how they want to proceed.
+              Write a short warning in ${activeTimezone}. List alternatives clearly and ask for instructions.
             `;
             const { text: resolutionText } =
               await this.generateWithFallback(resolutionPrompt);
@@ -348,7 +350,7 @@ export class AiService {
       let finalCombinedResponse = "";
 
       if (answerTexts.length > 0) {
-        finalCombinedResponse += answerTexts.join("\n\n") + "\n\n---\n\n";
+        finalCombinedResponse += answerTexts.join("\n\n") + "\n\n";
       }
       if (actionResults.length > 0) {
         finalCombinedResponse +=
@@ -363,8 +365,8 @@ export class AiService {
 
       if (!finalCombinedResponse.trim()) {
         finalCombinedResponse = needsOnboarding
-          ? "Hi! Tell me more about the meeting you'd like to schedule (title, time, duration)."
-          : "I've processed your requests.";
+          ? "I'm ready. Please provide the meeting title and time so I can orchestrate your schedule."
+          : "Understood. I have updated your timeline accordingly.";
       }
 
       const updatedHistory = [
@@ -395,6 +397,7 @@ export class AiService {
         refreshNeeded: actionTaken,
       };
     } catch (error: any) {
+      console.error("[CRITICAL ASSISTANT ERROR]", error);
       this.logger.error(`Assistant Error: ${error.message}`);
       throw new InternalServerErrorException("Assistant Recalibrating.");
     }
@@ -531,32 +534,26 @@ export class AiService {
       }).format(now);
 
       const prompt = `
-        Analyze the following incoming emails. Determine if they are requesting or proposing a scheduling event/meeting.
+        Analyze incoming emails for scheduling intent.
         
         CRITICAL TEMPORAL CONTEXT:
-        - User's Timezone Preference: ${activeTimezone}
+        - User's Timezone: ${activeTimezone}
         - User's Current Local Date: ${userLocalDate}
         - User's Current Local Time: ${userLocalTime}
-        - Calculate date time based on this user preference (${activeTimezone}).
-        - Convert and return the final start_time as a valid future UTC ISO string.
 
-        For each email, return a JSON object within an array.
-        
-        Required schema per object:
-        - id: string (the exact email ID provided)
-        - is_event: boolean (true if it's a meeting request, false otherwise)
-        - is_scam: boolean (true if it looks like spam/phishing)
-        - title: string (create a clear title for the event)
-        - start_time: UTC ISO string (MUST be the calculated UTC conversion of the requested local time)
-        - duration_minutes: number (default 60 if unspecified)
-        - severity_score: number (1 to 100. Assign based on context. 1=tea time/gym, 100=critical bug/founder/client meeting)
-        - type: string (choose from: "meeting", "interview", "zoom_call", "gym", "travel", "other")
-        - is_reschedulable: boolean (MUST BE false for gym/tea time, true otherwise)
-        - reasoning: string (a short sentence explaining your severity score and event classification)
+        Return a JSON array where each object is:
+        - id: string
+        - is_event: boolean
+        - is_scam: boolean
+        - title: string
+        - start_time: UTC ISO string (calculated from local)
+        - duration_minutes: number
+        - severity_score: 1-100
+        - type: string
+        - is_reschedulable: boolean
+        - reasoning: string
 
-        Emails Data: ${JSON.stringify(emails)}
-        
-        Return ONLY valid JSON array without any markdown formatting.
+        Emails: ${JSON.stringify(emails)}
       `;
       const { text } = await this.generateWithFallback(prompt);
       return JSON.parse(this.cleanJson(text));
