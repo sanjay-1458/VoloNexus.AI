@@ -2,10 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>VoloNexus.AI Technical Documentation</title>
+
 </head>
 
 <body>
+
+<h1>Now Live 🚀</h1>
+
+<p>
+  <a href="https://volo-nexus-ai.vercel.app/" target="_blank">
+    <img src="https://img.shields.io/badge/Visit%20Live%20App-VoloNexus.AI-0A66C2?style=for-the-badge&logo=vercel&logoColor=white" />
+  </a>
+</p>
+
+<p>
+  <b><a href="https://volo-nexus-ai.vercel.app/" target="_blank">
+    https://volo-nexus-ai.vercel.app/
+  </a></b>
+</p>
 
 <h1>🚀 VoloNexus.AI: Autonomous Scheduling System</h1>
 
@@ -17,6 +31,43 @@ detects scheduling intent, resolves conflicts, and updates calendars without con
 <p>
 The platform operates using multiple independent agents, each responsible for a specific part of the workflow.
 </p>
+
+<h2>Screenshots Preview</h2>
+
+<table>
+  <tr>
+    <td align="center">
+      <b>Events</b><br/>
+      <img src="https://github.com/user-attachments/assets/4d33ad03-4e70-45be-8bde-e2de519233c3" width="450"/>
+    </td>
+    <td align="center">
+      <b>Accounts</b><br/>
+      <img src="https://github.com/user-attachments/assets/6befb9e4-f415-470e-b17c-75f864870857" width="450"/>
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center">
+      <b>Assistant</b><br/>
+      <img src="https://github.com/user-attachments/assets/acba60b1-7144-4422-aea6-eff12afaf74b" width="450"/>
+    </td>
+    <td align="center">
+      <b>Reporting Bug</b><br/>
+      <img src="https://github.com/user-attachments/assets/e34b781e-2fa4-405e-8dcc-e21a827a048e" width="450"/>
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center">
+      <b>Bug Reports</b><br/>
+      <img src="https://github.com/user-attachments/assets/d2f7cbf9-492d-4737-8a44-7096ec4e41e6" width="450"/>
+    </td>
+    <td align="center">
+      <b>Events Heatmap</b><br/>
+      <img src="https://github.com/user-attachments/assets/9d3be022-e4a6-4f0d-9943-dd867340c23a" width="450"/>
+    </td>
+  </tr>
+</table>
 
 <hr>
 
