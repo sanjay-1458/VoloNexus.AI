@@ -1,281 +1,371 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  
+<meta charset="UTF-8">
+<title>VoloNexus.AI Technical Documentation</title>
 </head>
+
 <body>
 
-<h1>🚀 VoloNexus.AI</h1>
-<p><strong>Autonomous AI Meeting & Event Orchestration Swarm</strong></p>
+<h1>🚀 VoloNexus.AI: Autonomous Scheduling System</h1>
 
 <p>
-VoloNexus.AI is a high-performance, agentic platform designed to automate the lifecycle 
-of professional scheduling. It leverages an <strong>Autonomous Agent Swarm</strong> to parse communications, 
-detect intent, resolve conflicts, and manage complex timelines using a hybrid intelligence model.
+VoloNexus.AI is a system designed to automate professional scheduling. It processes incoming communication,
+detects scheduling intent, resolves conflicts, and updates calendars without continuous user input.
+</p>
+
+<p>
+The platform operates using multiple independent agents, each responsible for a specific part of the workflow.
 </p>
 
 <hr>
 
-<h2>🛠 Tech Stack</h2>
+<h2>1. Architectural Decisions (Why This Tech Stack)</h2>
 
-<table border="1" cellpadding="8" cellspacing="0">
-  <thead>
-    <tr>
-      <th>Category</th>
-      <th>Technology</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td>Backend</td><td>NestJS (Node.js)</td></tr>
-    <tr><td>Frontend</td><td>Next.js 14 (App Router), Tailwind CSS</td></tr>
-    <tr><td>Database</td><td>MongoDB (via Mongoose)</td></tr>
-    <tr><td>Caching</td><td>Upstash Redis</td></tr>
-    <tr><td>Event Broker</td><td>Native EventEmitter (Local Pub-Sub Swarm)</td></tr>
-    <tr><td>AI Core</td><td>Google Gemini API</td></tr>
-    <tr><td>Memory</td><td>Pinecone Vector Database</td></tr>
-    <tr><td>Payments</td><td>Stripe (Knight Tier Subscriptions)</td></tr>
-    <tr><td>UI/UX</td><td>Framer Motion, Lucide React</td></tr>
-  </tbody>
+<h3>Backend: NestJS</h3>
+<ul>
+<li>Modular architecture for separating agent logic</li>
+<li>Dependency Injection for managing services</li>
+<li>EventEmitter used for internal Pub-Sub communication</li>
+<li>Supports background jobs (Cron, intervals)</li>
+</ul>
+
+<h3>Frontend: Next.js 14</h3>
+<ul>
+<li>Server-side rendering for faster initial load</li>
+<li>Client-side updates for dashboard and assistant</li>
+<li>Structured routing using App Router</li>
+</ul>
+
+<h3>Database: MongoDB</h3>
+<ul>
+<li>Flexible schema for different event types</li>
+<li>Stores users, events, tokens, and metadata</li>
+<li>Schema validation using Mongoose</li>
+</ul>
+
+<hr>
+
+<h2>2. Infrastructure & Runtime Behavior</h2>
+
+<h3>2.1 Server Uptime (Render + Health Monitoring)</h3>
+
+<p>
+The backend runs on a hosting service that automatically stops inactive servers after a short period.
+This creates a problem because background jobs (email scanning, reminders) stop running when the server is inactive.
+</p>
+
+<p>
+To prevent this, an external monitoring service sends periodic requests to the backend.
+</p>
+
+<table border="1" cellpadding="8">
+<tr>
+<th>Component</th>
+<th>Function</th>
+</tr>
+<tr>
+<td>Backend Server</td>
+<td>Runs API, agents, and scheduled jobs</td>
+</tr>
+<tr>
+<td>/api/health</td>
+<td>Lightweight endpoint used for uptime checks</td>
+</tr>
+<tr>
+<td>Monitoring Service</td>
+<td>Sends requests every few minutes to keep server active</td>
+</tr>
+</table>
+
+<ul>
+<li>Ensures background jobs continue running</li>
+<li>Prevents loss of scheduled processing</li>
+</ul>
+
+<hr>
+
+<h3>2.2 Authentication & Access (Google OAuth)</h3>
+
+<p>
+The system connects to user accounts using OAuth 2.0. This allows the backend to read emails and manage calendar events.
+</p>
+
+<ul>
+<li>User grants permission during login</li>
+<li>Backend receives access and refresh tokens</li>
+<li>Refresh token is stored securely in the database</li>
+</ul>
+
+<table border="1" cellpadding="8">
+<tr>
+<th>Token Type</th>
+<th>Purpose</th>
+</tr>
+<tr>
+<td>Access Token</td>
+<td>Used for API requests (short-lived)</td>
+</tr>
+<tr>
+<td>Refresh Token</td>
+<td>Used to generate new access tokens</td>
+</tr>
+</table>
+
+<p>
+This allows the system to continue working without requiring the user to log in again.
+</p>
+
+<hr>
+
+<h3>2.3 Email Processing & State Management</h3>
+
+<p>
+Incoming emails act as the primary input for scheduling.
+</p>
+
+<ol>
+<li>System fetches unread emails</li>
+<li>Email content is analyzed for scheduling intent</li>
+<li>Relevant data is extracted (time, participants, constraints)</li>
+<li>Email is marked as processed</li>
+</ol>
+
+<table border="1" cellpadding="8">
+<tr>
+<th>Step</th>
+<th>Action</th>
+</tr>
+<tr>
+<td>Fetch</td>
+<td>Retrieve unread messages</td>
+</tr>
+<tr>
+<td>Analyze</td>
+<td>Detect scheduling intent</td>
+</tr>
+<tr>
+<td>Store</td>
+<td>Save structured data</td>
+</tr>
+<tr>
+<td>Update</td>
+<td>Mark email as processed</td>
+</tr>
+</table>
+
+<p>
+Marking emails prevents repeated processing of the same message.
+</p>
+
+<hr>
+
+<h3>2.4 Data Storage & Performance</h3>
+
+<table border="1" cellpadding="8">
+<tr>
+<th>System</th>
+<th>Role</th>
+</tr>
+<tr>
+<td>MongoDB</td>
+<td>Primary data storage</td>
+</tr>
+<tr>
+<td>Pinecone</td>
+<td>Stores embeddings for preference lookup</td>
+</tr>
+<tr>
+<td>Redis</td>
+<td>Caches frequently accessed data</td>
+</tr>
+</table>
+
+<h4>Pinecone</h4>
+<ul>
+<li>Stores vector representations of past events</li>
+<li>Used to retrieve similar past behavior</li>
+</ul>
+
+<h4>Redis</h4>
+<ul>
+<li>Caches availability data</li>
+<li>Reduces repeated external API calls</li>
+<li>Improves dashboard performance</li>
+</ul>
+
+<hr>
+
+<h2>3. Autonomous Agent System</h2>
+
+<table border="1" cellpadding="8">
+<tr>
+<th>Agent</th>
+<th>Input</th>
+<th>Output</th>
+</tr>
+
+<tr>
+<td>Email Parser</td>
+<td>Email content</td>
+<td>Structured intent data</td>
+</tr>
+
+<tr>
+<td>Context Agent</td>
+<td>User ID</td>
+<td>User preferences and history</td>
+</tr>
+
+<tr>
+<td>Scheduler</td>
+<td>Intent + context</td>
+<td>Final scheduling decision</td>
+</tr>
+
+<tr>
+<td>Notification</td>
+<td>Decision</td>
+<td>User-facing messages</td>
+</tr>
 </table>
 
 <hr>
 
-<h2>🔄 System Workflow: Lifecycle of an Event</h2>
+<h2>4. Conflict Resolution System</h2>
 
-<p>VoloNexus.AI operates on an <strong>Event-Driven Architecture</strong>.</p>
-
-<ol>
-  <li>
-    <h3>📥 Ingestion Layer</h3>
-    <ul>
-      <li>Monitors connected accounts via Google OAuth</li>
-      <li>Captures raw data through Webhooks Module</li>
-      <li>Publishes <code>email.received</code> event to Local Pub-Sub Broker</li>
-    </ul>
-  </li>
-
-  <li>
-    <h3>🧠 Analysis Phase (The Swarm)</h3>
-    <ul>
-      <li><strong>Email Agent:</strong> Classifies intent (Meeting, Cancellation, Reschedule)</li>
-      <li><strong>Context Agent:</strong> Fetches user history from Pinecone Vector DB</li>
-    </ul>
-  </li>
-
-  <li>
-    <h3>⚙️ Orchestration & Conflict Resolution</h3>
-    <ul>
-      <li><strong>Scheduler Agent:</strong> Checks conflicts against MongoDB state</li>
-      <li><strong>Finalization:</strong> Sends results via Notification Agent (Dashboard / WhatsApp)</li>
-    </ul>
-  </li>
-</ol>
-
-<hr>
-
-<h2>🧠 Hybrid Scheduling Engine</h2>
-
-<h3>1. AI-Driven Reasoning (Probabilistic)</h3>
+<h3>4.1 Detection</h3>
 <ul>
-  <li>Uses Gemini LLM for linguistic understanding</li>
-  <li>Extracts structured data:
-    <ul>
-      <li><strong>Entities:</strong> Titles, participants, timeframes</li>
-      <li><strong>Soft Constraints:</strong> e.g., "afternoon", "if possible"</li>
-      <li><strong>Intent:</strong> Booking vs Inquiry</li>
-    </ul>
-  </li>
+<li>Compare new event time with existing events</li>
+<li>Check for overlapping intervals</li>
 </ul>
 
-<h3>2. Deterministic Scheduling (Rule-Based)</h3>
+<h3>4.2 Priority Handling</h3>
+
+<table border="1" cellpadding="8">
+<tr>
+<th>Priority Level</th>
+<th>Description</th>
+</tr>
+<tr><td>1</td><td>Low</td></tr>
+<tr><td>2</td><td>Medium</td></tr>
+<tr><td>3</td><td>High</td></tr>
+<tr><td>4</td><td>Critical</td></tr>
+</table>
+
 <ul>
-  <li><strong>Overlapping Logic:</strong> Interval-tree collision detection</li>
-  <li><strong>Priority Displacement:</strong> Moves low-priority events if needed</li>
-  <li><strong>Resolution Math:</strong> Finds nearest valid time gap</li>
+<li>If new event has higher priority → existing event may be moved</li>
+<li>If lower priority → alternatives are suggested</li>
 </ul>
 
-<p><strong>Guarantee:</strong> No two events occupy the same millisecond.</p>
-
-<hr>
-
-<h2>🚀 Key Features</h2>
-
+<h3>4.3 Resolution</h3>
 <ul>
-  <li>
-    <h3>🎙 The Orchestrator Assistant</h3>
-    <ul>
-      <li>Handles complex queries like: <em>"Move all Monday meetings to Thursday"</em></li>
-      <li>120-second long-polling support for deep reasoning workflows</li>
-    </ul>
-  </li>
-
-  <li>
-    <h3>🛡 Knight Tier (Premium)</h3>
-    <ul>
-      <li>Expands account limit from 2 → 7</li>
-      <li>Priority Swarm routing</li>
-      <li>Persistent Pinecone memory access</li>
-    </ul>
-  </li>
-
-  <li>
-    <h3>🏛 Root Authority (Admin Dashboard)</h3>
-    <ul>
-      <li>Real-time swarm health monitoring</li>
-      <li>Raw decision logs (progressive rendering)</li>
-      <li>OAuth sync & latency tracking</li>
-    </ul>
-  </li>
+<li>Find next available time slot</li>
+<li>Move lower-priority event if allowed</li>
+<li>Notify affected participants</li>
 </ul>
 
 <hr>
 
-<h2>⚡ Performance & Persistence</h2>
-
-<ul>
-  <li><strong>Persistent Hosting:</strong> Optimized for long-running AI tasks (e.g., Render)</li>
-  <li><strong>Local Pub-Sub:</strong> Zero-latency agent communication via EventEmitter</li>
-  <li><strong>Stable Connectivity:</strong> Forced IPv4 DNS resolution to prevent drops</li>
-</ul>
-
-<hr>
-
-<h2>📌 Design Principles</h2>
-
-<ul>
-  <li>Event-Driven Architecture</li>
-  <li>Hybrid Intelligence (AI + Deterministic)</li>
-  <li>Agent-Based Modularity</li>
-  <li>Scalable & Fault-Tolerant</li>
-</ul>
-
-<hr>
-
-<h2>✨ Vision</h2>
+<h2>5. Assistant (Manual Control)</h2>
 
 <p>
-VoloNexus.AI aims to redefine productivity through fully autonomous orchestration,
-removing human friction from scheduling and coordination workflows.
+The assistant allows users to interact with the system using natural language.
+</p>
+
+<ul>
+<li>Accepts commands like rescheduling or deleting events</li>
+<li>Translates input into backend function calls</li>
+<li>Waits for processing before returning results</li>
+</ul>
+
+<p>
+Long-running operations are supported by keeping the request open until processing is complete.
 </p>
 
 <hr>
 
-<h3 align="center">VoloNexus.AI — Redefining productivity through autonomous orchestration.</h3>
+<h2>6. Real-Time Updates</h2>
 
-<hr>
-
-<h2>🚀 Getting Started</h2>
-
-<h3>📋 Prerequisites</h3>
-<p>Ensure the following dependencies and services are available before setup:</p>
 <ul>
-  <li><strong>Node.js (LTS):</strong> Required for both backend and frontend environments</li>
-  <li><strong>MongoDB Instance:</strong> Primary database for persistent scheduling state</li>
-  <li><strong>Redis (Upstash Recommended):</strong> Used for caching and fast state access</li>
-  <li><strong>API Keys:</strong>
-    <ul>
-      <li>Google Gemini API (AI reasoning engine)</li>
-      <li>Stripe (Billing & Knight Tier subscriptions)</li>
-      <li>Pinecone (Vector memory system)</li>
-      <li>Google OAuth (Account integrations)</li>
-    </ul>
-  </li>
+<li>System sends updates without requiring page refresh</li>
+<li>Used for scheduling changes and alerts</li>
 </ul>
 
+<table border="1" cellpadding="8">
+<tr>
+<th>Channel</th>
+<th>Purpose</th>
+</tr>
+<tr>
+<td>WebSocket</td>
+<td>Dashboard updates</td>
+</tr>
+<tr>
+<td>Messaging</td>
+<td>External notifications</td>
+</tr>
+</table>
+
 <hr>
 
-<h3>📦 Installation</h3>
+<h2>7. Installation & Setup</h2>
 
-<p>Install dependencies for both backend and frontend services:</p>
+<h3>Clone Repository</h3>
+<pre><code>
+git clone https://github.com/your-repo/VoloNexus.AI.git
+cd VoloNexus.AI
+</code></pre>
 
-<pre><code class="language-bash">
-# Install Backend Dependencies
+<h3>Backend</h3>
+<pre><code>
 cd backend
 npm install
+</code></pre>
 
-# Install Frontend Dependencies
-cd frontend
+<table border="1" cellpadding="8">
+<tr><th>Variable</th><th>Purpose</th></tr>
+<tr><td>GEMINI_API_KEY</td><td>AI processing</td></tr>
+<tr><td>MONGO_URL</td><td>Database</td></tr>
+<tr><td>PINECONE_API_KEY</td><td>Vector storage</td></tr>
+<tr><td>STRIPE_SECRET_KEY</td><td>Billing</td></tr>
+<tr><td>GOOGLE_CLIENT_ID / SECRET</td><td>OAuth</td></tr>
+</table>
+
+<h3>Frontend</h3>
+<pre><code>
+cd ../frontend
 npm install
 </code></pre>
 
-<p><strong>Notes:</strong></p>
 <ul>
-  <li>Ensure environment variables (<code>.env</code>) are properly configured before installation.</li>
-  <li>Backend and frontend should be installed in separate directories as per project structure.</li>
+<li>NEXT_PUBLIC_API_URL → Backend URL</li>
+<li>NEXT_PUBLIC_SOCKET_URL → WebSocket endpoint</li>
 </ul>
 
 <hr>
 
-<h3>⚙️ Running the App (Production Mode)</h3>
+<h2>8. Stripe Local Testing</h2>
 
-<p>Build and run both services in optimized production mode:</p>
-
-<pre><code class="language-bash">
-# Build and Start Backend
-npx tsc -p tsconfig.build.json
-npm run start:prod
-
-# Build and Start Frontend
-npm run build
-npm run start
+<pre><code>
+stripe listen --forward-to localhost:8001/api/stripe/webhook
 </code></pre>
 
-<p><strong>Execution Flow:</strong></p>
-<ul>
-  <li>Backend compiles TypeScript into optimized JavaScript using <code>tsconfig.build.json</code></li>
-  <li>Frontend builds a production-ready Next.js bundle</li>
-  <li>Both services should be deployed on persistent hosting (e.g., Render) for long-running AI processes</li>
-</ul>
+<hr>
+
+<h2>9. Maintenance</h2>
+
+<pre><code>
+Stop-Process -Name "node" -Force
+Remove-Item -Recurse -Force .next
+Remove-Item -Recurse -Force dist
+</code></pre>
 
 <hr>
 
-<h2>🧹 Maintenance & Cache Cleanup</h2>
-
-<p>
-Over time, build artifacts and caches can become stale or corrupted, especially in systems with 
-heavy AI workflows and long-running processes. Use the following cleanup routines to maintain stability.
+<p align="center">
+<strong>VoloNexus.AI — 2026</strong>
 </p>
-
-<h3>🖥 Frontend Cleanup</h3>
-
-<pre><code class="language-powershell">
-# Remove Next.js cache and build files
-Remove-Item .next -Recurse -Force
-</code></pre>
-
-<ul>
-  <li>Clears cached routes, compiled pages, and stale assets</li>
-  <li>Recommended when UI changes are not reflecting correctly</li>
-</ul>
-
-<h3>🧠 Backend Cleanup & Rebuild</h3>
-
-<pre><code class="language-powershell">
-# Remove distribution folder and TS build info
-Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
-Remove-Item -Force *.tsbuildinfo, .tsconfig.tsbuildinfo -ErrorAction SilentlyContinue
-
-# Recompile
-npx tsc -p tsconfig.build.json
-</code></pre>
-
-<ul>
-  <li>Deletes compiled output (<code>dist/</code>) and incremental build metadata</li>
-  <li>Forces a clean TypeScript recompilation</li>
-  <li>Useful when facing unexpected runtime inconsistencies or type drift</li>
-</ul>
-
-<hr>
-
-<h3>💡 Best Practices</h3>
-
-<ul>
-  <li>Run cleanup before major deployments to avoid stale artifacts</li>
-  <li>Automate cleanup in CI/CD pipelines for consistency</li>
-  <li>Monitor Redis cache usage to prevent memory bloat</li>
-  <li>Ensure environment variables are securely managed across environments</li>
-</ul>
 
 </body>
 </html>
