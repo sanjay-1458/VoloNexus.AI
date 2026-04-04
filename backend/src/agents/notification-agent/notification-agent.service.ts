@@ -91,8 +91,34 @@ export class NotificationAgentService {
   ): Promise<boolean> {
     try {
       const safeType = type ? type.replace(/_/g, " ") : "Update";
+      const tz = user?.preferences?.timezone || "Asia/Kolkata";
 
       let message = payload?.message || "You have a new update.";
+
+     
+      
+      if (payload?.event?.start_time) {
+        const localTimeStr = new Date(payload.event.start_time).toLocaleString(
+          "en-US",
+          {
+            timeZone: tz,
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          },
+        );
+
+        if (type === "EVENT_CREATED") {
+          message = `I've scheduled "${payload.event.title}" for ${localTimeStr}.`;
+        } else if (type === "EVENT_RESCHEDULED") {
+          message = `I've rescheduled "${payload.event.title}" to ${localTimeStr}.`;
+        } else if (type === "EVENT_REMINDER") {
+          message = `Reminder: "${payload.event.title}" starts at ${localTimeStr}.`;
+        }
+      }
 
       if (
         type === "CONFLICT_CHOICE_REQUIRED" &&
@@ -100,10 +126,20 @@ export class NotificationAgentService {
         payload.alternatives.length > 0
       ) {
         const slots = payload.alternatives
-          .map((s: any) => new Date(s.start).toLocaleString())
+          .map((s: any) =>
+            new Date(s.start).toLocaleString("en-US", {
+              timeZone: tz,
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            }),
+          )
           .join("\n - ");
-        message = `${payload.message}\n\nIf you prefer a different time, here are other free slots:\n - ${slots}\n\nYou can chat with the AI Assistant to change this, or ignore this if the new time works!`;
-      } else if (type === "CONFLICT_CHOICE_REQUIRED") {
+        message = `${payload.message}\n\nIf you prefer a different time, here are other free slots in your local time:\n - ${slots}\n\nYou can chat with the AI Assistant to change this, or ignore this if the new time works!`;
+      } else if (type === "CONFLICT_CHOICE_REQUIRED" && !payload.event) {
         message = payload.message;
       }
 
@@ -138,6 +174,7 @@ export class NotificationAgentService {
 
   private isWithinWorkHours(user: any): boolean {
     const now = new Date();
+    
     const currentHour = now.getHours();
     const start = parseInt(
       user.preferences?.work_hours_start?.split(":")[0] || "8",

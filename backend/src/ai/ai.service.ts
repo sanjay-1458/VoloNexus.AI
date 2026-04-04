@@ -511,13 +511,27 @@ export class AiService {
         .join("-");
       const userLocalTime = timeFormatter.format(now);
 
+      // Generate a dynamic cheat sheet for the next 8 days so AI maps weekdays (e.g. "Monday") to the correct date exactly.
+      const daysProjection = Array.from({ length: 8 })
+        .map((_, i) => {
+          const d = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
+          return new Intl.DateTimeFormat("en-GB", {
+            weekday: "short",
+            month: "short",
+            day: "2-digit",
+            timeZone: activeTimezone,
+          }).format(d);
+        })
+        .join(" -> ");
+
       const prompt = `
         Analyze incoming emails for scheduling intent. 
         
-        TEMPORAL CONTEXT:
+        TEMPORAL CONTEXT (CRITICAL):
         - User's Timezone: ${activeTimezone}
         - User's Current Local Date: ${userLocalDate}
         - User's Current Local Time: ${userLocalTime}
+        - 8-Day Calendar Cheat Sheet (Local): ${daysProjection}
 
         Task: Determine if emails are requesting or proposing a meeting.
         
@@ -526,7 +540,7 @@ export class AiService {
         - is_event: boolean (true if meeting request, false otherwise)
         - is_scam: boolean (true if it looks like spam/phishing)
         - title: string (create a clear title for the event)
-        - start_time: UTC ISO string (Calculate exactly from local text relative to ${userLocalDate} ${userLocalTime})
+        - start_time: UTC ISO string (Use the Calendar Cheat Sheet to find the correct local date requested in the email, combine it with the requested local time, and convert that final local time to a UTC ISO string by applying the offset for ${activeTimezone}).
         - duration_minutes: number (default 60 if unspecified)
         - severity_score: number (1 to 100. 1=tea time, 100=critical production issue)
         - type: string (choose: "meeting", "interview", "gym", "travel", "other")

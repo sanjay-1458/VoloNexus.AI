@@ -109,7 +109,8 @@ export class NotificationsService {
   }
 
   async sendProactiveReminder(event: any, userEmail: string) {
-    const timeStr = new Date(event.start_time).toLocaleTimeString([], {
+    const timeStr = new Date(event.start_time).toLocaleTimeString("en-US", {
+      timeZone: "Asia/Kolkata", // Fallback IST translation for proactive server-side crons
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
@@ -130,7 +131,7 @@ export class NotificationsService {
           
           <div style="display: flex; align-items: center; margin-bottom: 12px;">
             <span style="color: #9CA3AF; font-size: 13px; width: 80px; font-weight: bold; text-transform: uppercase;">Time:</span>
-            <span style="color: #ffffff; font-size: 14px;">${timeStr} (Today)</span>
+            <span style="color: #ffffff; font-size: 14px;">${timeStr} (Local)</span>
           </div>
 
           ${
@@ -177,7 +178,9 @@ export class NotificationsService {
   }
 
   async sendEventReminder(event: any, user: any, channels: string[]) {
-    const timeStr = new Date(event.start_time).toLocaleTimeString([], {
+    const tz = user?.preferences?.timezone || "Asia/Kolkata";
+    const timeStr = new Date(event.start_time).toLocaleTimeString("en-US", {
+      timeZone: tz,
       hour: "2-digit",
       minute: "2-digit",
     });
