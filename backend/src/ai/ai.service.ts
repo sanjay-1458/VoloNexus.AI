@@ -196,6 +196,7 @@ export class AiService {
         - Use EXACT 'id' for "target_id".
         - Rescheduling inherits details from CURRENT EVENTS.
 
+        LONG-TERM USER PREFERENCES (Pinecone): ${pineconeMemory || "None."}
         CURRENT EVENTS (LOCALIZED TO ${activeTimezone}): ${JSON.stringify(eventsForAi)}
         RECENT HISTORY: ${JSON.stringify(activeHistory.slice(-6))}
         USER MESSAGE: "${message}"
@@ -377,6 +378,7 @@ export class AiService {
         refreshNeeded: actionTaken,
       };
     } catch (error: any) {
+      console.error("[CRITICAL ASSISTANT ERROR]", error);
       this.logger.error(`Assistant Error: ${error.message}`);
       throw new InternalServerErrorException("Assistant Offline.");
     }
@@ -484,15 +486,67 @@ export class AiService {
     try {
       const now = new Date();
       let activeTimezone = "Asia/Kolkata";
+
       if (userId) {
         const user = await this.usersService.findById(userId);
-        if (user?.preferences?.timezone)
+        if (user?.preferences?.timezone) {
           activeTimezone = user.preferences.timezone;
+        }
       }
-      const prompt = `Analyze emails for scheduling. Timezone: ${activeTimezone}. Current Local Date/Time: ${now.toLocaleString("en-GB", { timeZone: activeTimezone })}. Return JSON array.`;
+
+      const timeFormatter = new Intl.DateTimeFormat("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: activeTimezone,
+      });
+      const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        timeZone: activeTimezone,
+      });
+
+      const userLocalDate = dateFormatter
+        .format(now)
+        .split("/")
+        .reverse()
+        .join("-");
+      const userLocalTime = timeFormatter.format(now);
+
+      const prompt = `
+        Analyze incoming emails for scheduling intent. 
+        
+        TEMPORAL CONTEXT:
+        - User's Timezone: ${activeTimezone}
+        - User's Current Local Date: ${userLocalDate}
+        - User's Current Local Time: ${userLocalTime}
+
+        Task: Determine if emails are requesting or proposing a meeting.
+        
+        Return a JSON array where each object MUST follow this schema:
+        - id: string (the exact email ID provided)
+        - is_event: boolean (true if meeting request, false otherwise)
+        - is_scam: boolean (true if it looks like spam/phishing)
+        - title: string (create a clear title for the event)
+        - start_time: UTC ISO string (Calculate exactly from local text relative to ${userLocalDate} ${userLocalTime})
+        - duration_minutes: number (default 60 if unspecified)
+        - severity_score: number (1 to 100. 1=tea time, 100=critical production issue)
+        - type: string (choose: "meeting", "interview", "gym", "travel", "other")
+        - is_reschedulable: boolean (MUST BE false for gym/tea time, true otherwise)
+        - reasoning: string (short sentence explaining classification)
+
+        Emails Data: ${JSON.stringify(emails)}
+        
+        Return ONLY valid raw JSON array.
+      `;
+
       const { text } = await this.generateWithFallback(prompt);
-      return JSON.parse(this.cleanJson(text));
+      const cleaned = this.cleanJson(text);
+      console.log("[EMAIL ANALYSIS SUCCESS]", cleaned);
+      return JSON.parse(cleaned);
     } catch (e: any) {
+      console.error("[EMAIL ANALYSIS FAILURE]", e.message);
       return [];
     }
   }
