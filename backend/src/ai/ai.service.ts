@@ -454,10 +454,7 @@ export class AiService {
   }
 
   private async generateWithFallback(prompt: string | any[], config: any = {}) {
-    const models = [
-      "models/gemini-flash-latest",
-      "models/gemini-2.0-flash-exp",
-    ];
+    const models = ["models/gemini-flash-latest", "models/gemini-2.5-flash"];
     let lastError: any = null;
     for (const modelName of models) {
       try {
