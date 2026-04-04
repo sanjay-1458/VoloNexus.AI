@@ -372,6 +372,8 @@ cd VoloNexus.AI
 <pre><code>
 cd backend
 npm install
+Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue; Remove-Item -Force *.tsbuildinfo, .tsconfig.tsbuildinfo -ErrorAction SilentlyContinue
+npx tsc -p tsconfig.build.json                       npm run start:prod 
 </code></pre>
 
 <table border="1" cellpadding="8">
@@ -387,6 +389,9 @@ npm install
 <pre><code>
 cd ../frontend
 npm install
+Remove-Item .next -Recurse -Force
+npm run build
+npm start
 </code></pre>
 
 <ul>
