@@ -67,11 +67,23 @@ The platform operates using multiple independent agents, each responsible for a 
       <img src="https://github.com/user-attachments/assets/9d3be022-e4a6-4f0d-9943-dd867340c23a" width="450"/>
     </td>
   </tr>
+
+  <tr>
+    <td align="center">
+      <b>Testimonials</b><br/>
+      <img src="https://github.com/user-attachments/assets/39fe76de-f5cb-47c7-ae43-9d63de6bbffc" width="450"/>
+    </td>
+    <td align="center">
+      <b>Revenue</b><br/>
+      <img src="https://github.com/user-attachments/assets/8074aae4-7da5-415f-9022-a2b8f8879dcd" width="450"/>
+    </td>
+  </tr>
 </table>
+
 
 <hr>
 
-<h2>1. Architectural Decisions (Why This Tech Stack)</h2>
+<h2>1. Architectural Decisions</h2>
 
 <h3>Backend: NestJS</h3>
 <ul>
