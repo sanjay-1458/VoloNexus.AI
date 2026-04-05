@@ -80,7 +80,6 @@ The platform operates using multiple independent agents, each responsible for a 
   </tr>
 </table>
 
-
 <hr>
 
 <h2>1. Architectural Decisions</h2>
@@ -430,6 +429,203 @@ Remove-Item -Recurse -Force dist
 </code></pre>
 
 <hr>
+
+<h2>Environmental Variables Needed to Run App</h2>
+
+<p>This project requires environment variables for both frontend and backend services. 
+Make sure to configure separate values for <b>local development</b> and <b>production deployment</b>.</p>
+
+---
+
+<h3>Frontend Environment (frontend.env.local)</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Local Value</th>
+      <th>Production Value</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>NEXT_PUBLIC_API_URL</td>
+      <td>http://localhost:8001</td>
+      <td>https://your-backend-domain.com</td>
+      <td>Base URL for backend API requests</td>
+    </tr>
+    <tr>
+      <td>NEXT_PUBLIC_SOCKET_URL</td>
+      <td>http://localhost:8001/events</td>
+      <td>https://your-backend-domain.com/events</td>
+      <td>WebSocket endpoint for real-time events</td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+<h3>Backend Environment (backend.env)</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Local Value</th>
+      <th>Production Value</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>PORT</td>
+      <td>8001</td>
+      <td>Provided by hosting (e.g., Render/Vercel)</td>
+      <td>Port on which backend server runs</td>
+    </tr>
+    <tr>
+      <td>NODE_ENV</td>
+      <td>development</td>
+      <td>production</td>
+      <td>Environment mode</td>
+    </tr>
+    <tr>
+      <td>MONGO_URL</td>
+      <td>Local/Atlas connection string</td>
+      <td>Production MongoDB URI</td>
+      <td>MongoDB database connection string</td>
+    </tr>
+    <tr>
+      <td>MONGO_DB_NAME</td>
+      <td>meetflow</td>
+      <td>Production DB name</td>
+      <td>Database name</td>
+    </tr>
+    <tr>
+      <td>JWT_SECRET</td>
+      <td>Random secure string</td>
+      <td>Strong production secret</td>
+      <td>Used for signing JWT tokens</td>
+    </tr>
+    <tr>
+      <td>JWT_EXPIRATION</td>
+      <td>1d</td>
+      <td>1d (or shorter)</td>
+      <td>Access token expiry</td>
+    </tr>
+    <tr>
+      <td>JWT_REFRESH_EXPIRATION</td>
+      <td>1d</td>
+      <td>7d (recommended)</td>
+      <td>Refresh token expiry</td>
+    </tr>
+    <tr>
+      <td>ADMIN_EMAIL</td>
+      <td>admin mail id</td>
+      <td>Secure admin email</td>
+      <td>Default admin login email</td>
+    </tr>
+    <tr>
+      <td>ADMIN_PASSWORD</td>
+      <td>admin password</td>
+      <td>Strong password</td>
+      <td>Default admin password</td>
+    </tr>
+    <tr>
+      <td>FRONTEND_URL</td>
+      <td>http://localhost:3000</td>
+      <td>https://your-frontend-domain.com</td>
+      <td>Frontend origin for CORS</td>
+    </tr>
+    <tr>
+      <td>GOOGLE_CLIENT_ID</td>
+      <td>Google OAuth client ID</td>
+      <td>Same or new production credential</td>
+      <td>Used for Google authentication</td>
+    </tr>
+    <tr>
+      <td>GOOGLE_CLIENT_SECRET</td>
+      <td>Google OAuth secret</td>
+      <td>Production secret</td>
+      <td>OAuth client secret</td>
+    </tr>
+    <tr>
+      <td>GOOGLE_CALLBACK_URL</td>
+      <td>http://localhost:8001/api/accounts/google/callback</td>
+      <td>https://your-backend-domain.com/api/accounts/google/callback</td>
+      <td>OAuth redirect URL</td>
+    </tr>
+    <tr>
+      <td>GEMINI_API_KEY</td>
+      <td>API key</td>
+      <td>Production API key</td>
+      <td>Used for AI features</td>
+    </tr>
+    <tr>
+      <td>REDIS_URL</td>
+      <td>Local/Upstash Redis URL</td>
+      <td>Production Redis URL</td>
+      <td>Used for caching and queues</td>
+    </tr>
+    <tr>
+      <td>SUPABASE_URL</td>
+      <td>Project URL</td>
+      <td>Production Supabase URL</td>
+      <td>Backend-as-a-service endpoint</td>
+    </tr>
+    <tr>
+      <td>SUPABASE_KEY</td>
+      <td>Publishable key</td>
+      <td>Production key</td>
+      <td>Public Supabase key</td>
+    </tr>
+    <tr>
+      <td>SUPABASE_ANON_KEY</td>
+      <td>Anon key</td>
+      <td>Production anon key</td>
+      <td>Client-safe key</td>
+    </tr>
+    <tr>
+      <td>SUPABASE_SERVICE_ROLE_KEY</td>
+      <td>Service role key</td>
+      <td>Production service key</td>
+      <td>Admin-level access (keep secret)</td>
+    </tr>
+    <tr>
+      <td>PINECONE_API_KEY</td>
+      <td>API key</td>
+      <td>Production key</td>
+      <td>Vector database access</td>
+    </tr>
+    <tr>
+      <td>PINECONE_ENVIRONMENT</td>
+      <td>ap-northeast-1</td>
+      <td>Production environment</td>
+      <td>Pinecone region</td>
+    </tr>
+    <tr>
+      <td>PINECONE_INDEX</td>
+      <td>volonexus-ai-context</td>
+      <td>Production index</td>
+      <td>Vector index name</td>
+    </tr>
+    <tr>
+      <td>STRIPE_SECRET_KEY</td>
+      <td>Test secret key</td>
+      <td>Live secret key</td>
+      <td>Payment processing key</td>
+    </tr>
+    <tr>
+      <td>STRIPE_WEBHOOK_SECRET</td>
+      <td>Local webhook secret</td>
+      <td>Production webhook secret</td>
+      <td>Stripe webhook verification</td>
+    </tr>
+  </tbody>
+</table>
+
+---
 
 <p align="center">
 <strong>VoloNexus.AI — 2026</strong>
