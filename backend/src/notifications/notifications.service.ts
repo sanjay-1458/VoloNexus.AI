@@ -5,15 +5,25 @@ import axios from "axios";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Account, AccountDocument } from "../accounts/schemas/account.schema";
+import * as nodemailer from "nodemailer";
 
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
+  private systemMailer: nodemailer.Transporter;
 
   constructor(
     private configService: ConfigService,
     @InjectModel(Account.name) private accountModel: Model<AccountDocument>,
-  ) {}
+  ) {
+    this.systemMailer = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: this.configService.get<string>("SYSTEM_EMAIL_ADDRESS"),
+        pass: this.configService.get<string>("SYSTEM_EMAIL_PASSWORD"),
+      },
+    });
+  }
 
   async sendEmail(
     to: string,
@@ -22,12 +32,28 @@ export class NotificationsService {
     fromEmail?: string,
   ): Promise<boolean> {
     try {
-      const query = fromEmail ? { email: fromEmail } : { is_primary: true };
-      const account = await this.accountModel.findOne(query);
+      if (!fromEmail) {
+        const systemEmail = this.configService.get<string>(
+          "SYSTEM_EMAIL_ADDRESS",
+        );
+        await this.systemMailer.sendMail({
+          from: `"VoloNexus.AI" <${systemEmail}>`,
+          to,
+          subject,
+          html: body,
+        });
+
+        console.log(
+          `[SYSTEM EMAIL SUCCESS]: Delivered to ${to} | Subject: ${subject}`,
+        );
+        return true;
+      }
+
+      const account = await this.accountModel.findOne({ email: fromEmail });
 
       if (!account || !account.oauth_tokens) {
         console.error(
-          `[EMAIL ERROR]: No connected account for: ${fromEmail || "Primary"}`,
+          `[OAUTH EMAIL ERROR]: No connected account for: ${fromEmail}`,
         );
         return false;
       }
@@ -64,10 +90,12 @@ export class NotificationsService {
         requestBody: { raw: encodedMessage },
       });
 
-      console.log(`[EMAIL SUCCESS]: Delivered to ${to} | Subject: ${subject}`);
+      console.log(
+        `[OAUTH EMAIL SUCCESS]: Delivered to ${to} | Subject: ${subject}`,
+      );
       return true;
     } catch (error: any) {
-      console.error("[GMAIL API FAILURE]:", error.message);
+      console.error("[EMAIL API FAILURE]:", error.message);
       return false;
     }
   }
@@ -110,7 +138,7 @@ export class NotificationsService {
 
   async sendProactiveReminder(event: any, userEmail: string) {
     const timeStr = new Date(event.start_time).toLocaleTimeString("en-US", {
-      timeZone: "Asia/Kolkata", // Fallback IST translation for proactive server-side crons
+      timeZone: "Asia/Kolkata",
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
