@@ -32,6 +32,55 @@ detects scheduling intent, resolves conflicts, and updates calendars without con
 The platform operates using multiple independent agents, each responsible for a specific part of the workflow.
 </p>
 
+<h2>Preview / Demo</h2>
+
+<table>
+  <tr>
+    <th align="left">#</th>
+    <th align="left">Description</th>
+    <th align="center">Resource</th>
+  </tr>
+
+  <tr>
+    <td>1</td>
+    <td>Creating event manually</td>
+    <td align="center">
+      <a href="https://drive.google.com/file/d/1E-4cjfAXT6K4hdnY6rpW3q4FPF1dOVQj/view?usp=sharing">🔗 View</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td>2</td>
+    <td>Logging a bug</td>
+    <td align="center">
+      <a href="https://drive.google.com/file/d/1Z2ZYzRSmPcfxUhkpS2Y5o4P3705GcIWT/view?usp=sharing">🔗 View</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td>3</td>
+    <td>Checking bugs and Admin dashboard</td>
+    <td align="center">
+      <a href="https://drive.google.com/file/d/1gWgpR4YoazcOLJaAl1L3cDYSljQqHl3c/view?usp=sharing">🔗 View</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td>4</td>
+    <td>Cron job scan meeting (received via email after ~4 minutes)</td>
+    <td align="center"><i>Internal / No link</i></td>
+  </tr>
+
+  <tr>
+    <td>5</td>
+    <td>
+      Google account sync: Add multiple accounts and sync events without duplicates.
+      Calendar events are prioritized and won’t be auto-rescheduled. Manual scan required.
+    </td>
+    <td align="center"><i>Feature note</i></td>
+  </tr>
+</table>
+
 <h2>Screenshots Preview</h2>
 
 <table>
