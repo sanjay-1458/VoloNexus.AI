@@ -125,5 +125,8 @@ EventSchema.index({ start_time: 1, end_time: 1 });
 
 EventSchema.index(
   { user_id: 1, external_event_id: 1 },
-  { unique: true, sparse: true },
+  {
+    unique: true,
+    partialFilterExpression: { external_event_id: { $ne: null } },
+  },
 );

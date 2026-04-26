@@ -137,13 +137,18 @@ export default function EventsPage() {
     });
   }, [events, searchQuery, filter]);
 
+
   const setQuickDuration = (minutes: number) => {
     if (!form.start_time) {
       const now = new Date();
-      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-      const startIso = now.toISOString().slice(0, 16);
+      const offset = now.getTimezoneOffset() * 60000;
+      const startIso = new Date(now.getTime() - offset)
+        .toISOString()
+        .slice(0, 16);
       const end = new Date(now.getTime() + minutes * 60000);
-      const endIso = end.toISOString().slice(0, 16);
+      const endIso = new Date(end.getTime() - offset)
+        .toISOString()
+        .slice(0, 16);
       setForm((prev) => ({ ...prev, start_time: startIso, end_time: endIso }));
     } else {
       const start = new Date(form.start_time);
@@ -171,16 +176,19 @@ export default function EventsPage() {
     let finalEndTime = form.end_time;
     if (!finalEndTime && form.start_time) {
       const start = new Date(form.start_time);
-      const offset = start.getTimezoneOffset() * 60000;
-      finalEndTime = new Date(start.getTime() + 30 * 60000 - offset)
+      const end = new Date(start.getTime() + 30 * 60000);
+      const offset = end.getTimezoneOffset() * 60000;
+      finalEndTime = new Date(end.getTime() - offset)
         .toISOString()
         .slice(0, 16);
     }
 
     try {
+     
       const payload: any = {
         ...form,
-        end_time: finalEndTime,
+        start_time: new Date(form.start_time).toISOString(),
+        end_time: new Date(finalEndTime).toISOString(),
         is_recurring: isRecurring,
       };
       if (!isRecurring) {

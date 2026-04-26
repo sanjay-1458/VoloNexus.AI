@@ -5,8 +5,9 @@ export type BugReportDocument = BugReport & Document;
 
 @Schema({ timestamps: true, collection: "bug_reports" })
 export class BugReport {
+ 
   @Prop({ type: Types.ObjectId, ref: "User", default: null })
-  user_id!: Types.ObjectId;
+  user_id!: Types.ObjectId | null;
 
   @Prop({ required: true })
   description!: string;

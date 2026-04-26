@@ -3,6 +3,7 @@ import {
   NotFoundException,
   Logger,
   InternalServerErrorException,
+  BadRequestException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
@@ -19,6 +20,11 @@ export class BugsService {
   ) {}
 
   async create(userId: string | null, data: any): Promise<any> {
+   
+    if (!data || !data.description || data.description.trim() === "") {
+      throw new BadRequestException("Bug description is required.");
+    }
+
     let aiRelevant = true;
     let aiSummary = "No summary generated";
     let aiImpact = "Pending admin review";
@@ -45,7 +51,7 @@ export class BugsService {
       }
 
       const bug = new this.bugModel({
-        user_id: validUserId,
+        user_id: validUserId, 
         description: data.description,
         screenshots: data.screenshots || [],
         severity: data.severity || "medium",
@@ -62,7 +68,7 @@ export class BugsService {
     } catch (dbError: any) {
       this.logger.error("Failed to save bug report to database", dbError.stack);
       throw new InternalServerErrorException(
-        "Database failed to save bug report",
+        `Database failed to save bug report: ${dbError.message}`,
       );
     }
   }
