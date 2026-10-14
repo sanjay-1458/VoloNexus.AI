@@ -7,6 +7,37 @@
 
 <body>
 
+
+
+<h2>Screenshots Preview</h2>
+
+<table>
+ 
+  <tr>
+    <td align="center">
+      <b>Assistant</b><br/>
+      <img src="https://github.com/user-attachments/assets/acba60b1-7144-4422-aea6-eff12afaf74b" width="450"/>
+    </td>
+    <td align="center">
+      <b>Events Heatmap</b><br/>
+      <img src="https://github.com/user-attachments/assets/9d3be022-e4a6-4f0d-9943-dd867340c23a" width="450"/>
+    </td>
+  </tr>
+   <tr>
+    <td align="center">
+      <b>Events</b><br/>
+      <img src="https://github.com/user-attachments/assets/4d33ad03-4e70-45be-8bde-e2de519233c3" width="450"/>
+    </td>
+    <td align="center">
+      <b>Accounts</b><br/>
+      <img src="https://github.com/user-attachments/assets/6befb9e4-f415-470e-b17c-75f864870857" width="450"/>
+    </td>
+  </tr>
+
+
+</table>
+
+
 <h1>Now Live 🚀</h1>
 
 <p>
